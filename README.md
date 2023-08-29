@@ -31,4 +31,9 @@ Para adicionar endpoints CRUD a um projeto existente, navegue até o diretório 
 ```sh
 node index.js -i ts user
 ```
-Isso criará automaticamente rotas, controladores e modelos para as operações CRUD do recurso "user". Ao passar a flag -i o comando não te perguntará o nome do projeto.
+Isso criará automaticamente rotas, controladores e modelos para as operações CRUD do recurso "user". Ao passar a flag `-i` o comando não te perguntará o nome do projeto.
+
+## Observações
+- O nome do recurso sempre deverá ser enviado no final do comando. Exemplo:
+  - correto: `node index.js -i ts nome-do-recurso` OU `node index.js ts -i nome-do-recurso`
+  - errado: `node index.js nome-do-recurso -i ts`
