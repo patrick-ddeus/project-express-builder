@@ -1,389 +1,60 @@
-(async () => {
-  const args = process.argv;
-  const extension =
-    args.includes("typescript") || args.includes("ts") ? "ts" : "js";
-  const resource = args[args.length - 1] || "default";
+function constructorTemplate(e,t="default",r="js"){let s={controller:`import ${t}Service from '../services/${t}.service';
+${"ts"===r?'import { Request, Response } from "express";':""}
 
-  const structure = {
-    controllers: `${resource}.controller.${extension}`,
-    services: `${resource}.service.${extension}`,
-    repositories: `${resource}.repository.${extension}`,
-    routers: `${resource}.router.${extension}`,
-    middlewares: `validation.middleware.${extension}`,
-    errors: `invalidData.error.${extension}`,
-    schemas: `params.schema.${extension}`,
-    configs: `index.ts`,
-  };
-
-  const { execa } = await import("execa");
-  const fs = await import("fs");
-  const path = await import("path");
-  const inquirer = await import("inquirer");
-  const prompt = inquirer.createPromptModule();
-
-  let projectName = "project";
-
-  if (!args.includes("-i")) {
-    const { project } = await prompt({
-      type: "input",
-      name: "project",
-      message: "Nome do projeto:",
-    });
-
-    projectName = project;
-  }
-
-  const cliProgress = await import("cli-progress");
-  const bar1 = new cliProgress.SingleBar(
-    {},
-    cliProgress.Presets.shades_classic
-  );
-
-  bar1.start(100, 0);
-  const isLoading = loading(bar1);
+async function create(req${"ts"===r?": Request":""}, res${"ts"===r?": Response":""}) {
+  const body = req.body ${"ts"===r?"as BodyParams":""}
   try {
-    const sourcePath = path.resolve(projectName, "src");
-
-    if (!fs.existsSync(sourcePath)) {
-      fs.mkdirSync(sourcePath, { recursive: true });
-    }
-
-    fs.writeFileSync(
-      path.resolve(projectName, "src", `app.${extension}`),
-      `import express, { Express } from "express";
-import cors from "cors";
-
-import { loadEnv } from "./configs";
-import IndexRouter from "./routers/index.router";
-
-loadEnv();
-
-const app = express();
-app
-  .use(cors())
-  .use(express.json())
-  .use(IndexRouter)
-  .get("/health", (_req, res) => res.send("OK!"));
-
-export function init(): Promise<Express> {
-  return Promise.resolve(app);
-}
-
-export default app;      
-      `
-    );
-
-    fs.writeFileSync(
-      path.resolve(projectName, "src", `server.${extension}`),
-      `import app, { init } from './app';
-
-const port = +process.env.PORT || 4000;
-
-init().then(() => {
-  app.listen(port, () => {
-    /* eslint-disable-next-line no-console */
-    console.log(\`Server is listening on port \${port}.\`);
-  });
-});
-      `
-    );
-
-    if (!fs.existsSync(`/node_modules`)) {
-      await execa("npm", ["init", "-y"], { cwd: projectName });
-      await execa(
-        "npm",
-        [
-          "i",
-          "express",
-          "http-status",
-          "joi",
-          "dotenv",
-          "cors",
-          "dotenv-expand",
-        ],
-        {
-          cwd: projectName,
-        }
-      );
-      await execa("npm", ["i", "-D", "nodemon"], { cwd: projectName });
-
-      if (extension === "ts") {
-        await execa(
-          "npm",
-          [
-            "i",
-            "-D",
-            "typescript",
-            "typescript-transform-paths",
-            "ts-node",
-            "tsconfig-paths",
-            "ttypescript",
-            "typescript-transform-paths",
-          ],
-          { cwd: projectName }
-        );
-        await execa(
-          "npm",
-          [
-            "i",
-            "-D",
-            "@types/express",
-            "@types/node",
-            "@types/cors",
-            "@types/dotenv",
-            "cross-env",
-          ],
-          { cwd: projectName }
-        );
-        await execa("npx", ["gitignore", "node"], { cwd: projectName });
-
-        bar1.update(50);
-
-        fs.writeFileSync(
-          path.resolve(projectName, "tsconfig.json"),
-          JSON.stringify(
-            {
-              compilerOptions: {
-                target: "es2020",
-                module: "commonjs",
-                outDir: "dist",
-                noImplicitAny: true,
-                emitDecoratorMetadata: true,
-                experimentalDecorators: true,
-                esModuleInterop: true,
-                rootDirs: ["src", "tests"],
-                baseUrl: "src",
-                paths: {
-                  "@/*": ["*"],
-                },
-                plugins: [
-                  {
-                    transform: "typescript-transform-paths",
-                  },
-                ],
-              },
-              include: ["src", "tests"],
-            },
-            null,
-            2
-          )
-        );
-        fs.writeFileSync(
-          path.resolve(projectName, "nodemon.json"),
-          JSON.stringify(
-            {
-              execMap: {
-                ts: "node --require ts-node/register",
-              },
-            },
-            null,
-            2
-          )
-        );
-
-        fs.readFile(
-          path.resolve(projectName, "package.json"),
-          "utf8",
-          (err, data) => {
-            if (err) {
-              console.error(err);
-              return;
-            }
-            const newPackage = JSON.parse(data);
-            newPackage.scripts.dev =
-              "cross-env NODE_ENV=development nodemon ./src/server.ts'";
-            newPackage.scripts.start = "node dist/server.js";
-            newPackage.scripts.build = "tsc -p tsconfig.build.json";
-            newPackage.scripts.lint = "eslint .";
-            newPackage.scripts.prebuild = "rm -rf dist";
-            delete newPackage.scripts.test;
-
-            fs.writeFileSync(
-              path.resolve(projectName, "package.json"),
-              JSON.stringify(newPackage, null, 2)
-            );
-          }
-        );
-
-        fs.writeFileSync(
-          path.resolve(projectName, "src", "protocols.ts"),
-          `export type ApplicationError = {
-  name: string;
-  message: string;
-};
-          `
-        );
-      }
-    }
-
-    for (let [foulder, file] of Object.entries(structure)) {
-      const fullPath = `${sourcePath}/${foulder}`;
-
-      if (!fs.existsSync(fullPath)) {
-        fs.mkdirSync(`${sourcePath}/${foulder}`);
-      }
-
-      fs.writeFileSync(
-        `${sourcePath}/${foulder}/${file}`,
-        constructorTemplate(replacePlurality(foulder), resource, extension)
-      );
-
-      if (foulder === "routers") {
-        const indexRouterPath = `${sourcePath}/${foulder}/index.router.${extension}`;
-        if (!fs.existsSync(indexRouterPath)) {
-          fs.writeFileSync(
-            indexRouterPath,
-            `import { Router } from "express";
-// You can add more routes but don't change this comment (import)
-
-const IndexRouter = Router();
-
-// You can add more routes but don't change this comment (index)
-
-export default IndexRouter`
-          );
-        }
-
-        fs.readFile(indexRouterPath, "utf8", (err, data) => {
-          if (err) {
-            console.error(err);
-            return;
-          }
-          const newRouteCode = `IndexRouter.use(${resource}Router)`;
-
-          const routeMarker =
-            "// You can add more routes but don't change this comment (index)";
-
-          const regex =
-            /\/\/\s*You can add more routes but don't change this comment \(index\)/gm;
-
-          if (regex.test(data) && !data.includes(newRouteCode)) {
-            const updatedRouter = data.replace(
-              regex,
-              newRouteCode + "\n" + routeMarker
-            );
-
-            const regexForImports =
-              /\/\/\s*You can add more routes but don't change this comment \(import\)/gm;
-
-            const newImport = `import { ${resource}Router } from "./${resource}.router";`;
-            if (regexForImports.test(data) && !data.includes(newImport)) {
-              const importsMark =
-                "// You can add more routes but don't change this comment (import)";
-              const updatedImport = updatedRouter.replace(
-                regexForImports,
-                newImport + "\n" + importsMark
-              );
-              fs.writeFile(
-                indexRouterPath,
-                updatedImport,
-                "utf-8",
-                (writeErr) => {
-                  if (writeErr) {
-                    console.error(writeErr);
-                    return;
-                  }
-                  console.log("New route added successfully.");
-                }
-              );
-            }
-          }
-        });
-      }
-    }
-
-    bar1.update(100);
-    bar1.stop();
-    clearInterval(isLoading);
-    console.log("         ");
-    console.log("All Done!");
-    console.log("         ");
-    console.log("Happy Hacking! ❤");
-    console.log("         ");
-    console.log("         ");
-  } catch (error) {
-    console.error(
-      `ERROR: The command failed. stderr: ${error} (${error.exitCode})`
-    );
-    console.log(error);
-    bar1.stop();
-    process.exit(1);
-  }
-})();
-
-function constructorTemplate(foulder, theme = "default", extension = "js") {
-  const template = {
-    controller: `import ${theme}Service from '../services/${theme}.service';
-${extension === "ts" ? 'import { Request, Response } from "express";' : ""}
-
-async function create(req${extension === "ts" ? ": Request" : ""}, res${
-      extension === "ts" ? ": Response" : ""
-    }) {
-  const body = req.body ${extension === "ts" ? "as BodyParams" : ""}
-  try {
-    const data = await ${theme}Service.create(body);
+    const data = await ${t}Service.create(body);
     res.status(201).json(data);
   } catch (error) {
     res.sendStatus(500);
   }
 }
 
-async function read(req${extension === "ts" ? ": Request" : ""}, res${
-      extension === "ts" ? ": Response" : ""
-    }) {
+async function read(req${"ts"===r?": Request":""}, res${"ts"===r?": Response":""}) {
   try {
-    const data = await ${theme}Service.read();
+    const data = await ${t}Service.read();
     res.status(200).json(data);
   } catch (error) {
     res.sendStatus(500);
   }
 }
 
-async function readOne(req${extension === "ts" ? ": Request" : ""}, res${
-      extension === "ts" ? ": Response" : ""
-    }) {
+async function readOne(req${"ts"===r?": Request":""}, res${"ts"===r?": Response":""}) {
   const { id } = req.params;
 
   try {
-    const data = await ${theme}Service.readOne(+id);
+    const data = await ${t}Service.readOne(+id);
     res.status(200).json(data);
   } catch (error) {
     res.sendStatus(500);
   }
 }
 
-async function update(req${extension === "ts" ? ": Request" : ""}, res${
-      extension === "ts" ? ": Response" : ""
-    }) {
+async function update(req${"ts"===r?": Request":""}, res${"ts"===r?": Response":""}) {
   const { id } = req.params;
   const update = req.body
   
   try {
-    const data = await ${theme}Service.update(+id, update);
+    const data = await ${t}Service.update(+id, update);
     res.status(200).json(data);
   } catch (error) {
     res.sendStatus(500);
   }
 }
 
-async function remove(req${extension === "ts" ? ": Request" : ""}, res${
-      extension === "ts" ? ": Response" : ""
-    }) {
+async function remove(req${"ts"===r?": Request":""}, res${"ts"===r?": Response":""}) {
   const { id } = req.params;
 
   try {
-    const data = await ${theme}Service.remove(+id);
+    const data = await ${t}Service.remove(+id);
     res.status(200).json(data);
   } catch (error) {
     res.sendStatus(500);
   }
 }
-${
-  extension === "ts"
-    ? `export type BodyParams = {};
-export type UpdateBodyParams = Partial<BodyParams>;`
-    : ""
-}
+${"ts"===r?`export type BodyParams = {};
+export type UpdateBodyParams = Partial<BodyParams>;`:""}
 
 export default {
   create,
@@ -392,30 +63,27 @@ export default {
   update,
   remove,
 };  
-  `,
-    service: `import ${theme}Repository from '../repositories/${theme}.repository';
-import { BodyParams, UpdateBodyParams } from '../controllers/${theme}.controller';
+  `,service:`import ${t}Repository from '../repositories/${t}.repository';
+import { BodyParams, UpdateBodyParams } from '../controllers/${t}.controller';
 
-async function create(body${extension === "ts" ? ": BodyParams" : ""}) {
-  return ${theme}Repository.create();
+async function create(body${"ts"===r?": BodyParams":""}) {
+  return ${t}Repository.create();
 }
 
 async function read() {
-  return ${theme}Repository.list();
+  return ${t}Repository.list();
 }
 
-async function readOne(id${extension === "ts" ? ": number" : ""}) {
-  return ${theme}Repository.listOne(id);
+async function readOne(id${"ts"===r?": number":""}) {
+  return ${t}Repository.listOne(id);
 }
 
-async function update(id${extension === "ts" ? ": number" : ""}, body${
-      extension === "ts" ? ": UpdateBodyParams" : ""
-    }) {
-  return ${theme}Repository.update();
+async function update(id${"ts"===r?": number":""}, body${"ts"===r?": UpdateBodyParams":""}) {
+  return ${t}Repository.update();
 }
 
-async function remove(id${extension === "ts" ? ": number" : ""}) {
-  return ${theme}Repository.remove();
+async function remove(id${"ts"===r?": number":""}) {
+  return ${t}Repository.remove();
 }
 
 export default {
@@ -425,8 +93,7 @@ export default {
   update,
   remove,
 };
-`,
-    repository: `async function create() {
+`,repository:`async function create() {
   return "Created!";
 }
 
@@ -453,49 +120,35 @@ export default {
   update,
   remove,
 };
-`,
-    router: `import { Router } from "express";
-import ${theme}Controller from "../controllers/${theme}.controller";
+`,router:`import { Router } from "express";
+import ${t}Controller from "../controllers/${t}.controller";
 import { validateParams } from "../middlewares/validation.middleware";
 import { signInSchema } from "../schemas/params.schema";
 
-const ${theme}Router = Router();
+const ${t}Router = Router();
 
-${theme}Router.get("/${theme}", ${theme}Controller.read);
-${theme}Router.get("/${theme}/:id", validateParams(signInSchema), ${theme}Controller.readOne);
-${theme}Router.post("/${theme}", ${theme}Controller.create);
-${theme}Router.patch("/${theme}/:id", validateParams(signInSchema), ${theme}Controller.update);
-${theme}Router.delete("/${theme}/:id", validateParams(signInSchema), ${theme}Controller.remove);
+${t}Router.get("/${t}", ${t}Controller.read);
+${t}Router.get("/${t}/:id", validateParams(signInSchema), ${t}Controller.readOne);
+${t}Router.post("/${t}", ${t}Controller.create);
+${t}Router.patch("/${t}/:id", validateParams(signInSchema), ${t}Controller.update);
+${t}Router.delete("/${t}/:id", validateParams(signInSchema), ${t}Controller.remove);
 
-export { ${theme}Router };    
-`,
-    middleware: `import httpStatus from 'http-status';
+export { ${t}Router };    
+`,middleware:`import httpStatus from 'http-status';
 import { invalidDataError } from '../errors/invalidData.error';
-${
-  extension === "ts"
-    ? `import { NextFunction, Request, Response } from 'express';
-import { ObjectSchema } from 'joi';`
-    : ""
-}
+${"ts"===r?`import { NextFunction, Request, Response } from 'express';
+import { ObjectSchema } from 'joi';`:""}
 
-export function validateBody${extension === "ts" ? "<T>" : ""}(schema${
-      extension === "ts" ? ": ObjectSchema<T>" : ""
-    })${extension === "ts" ? ": ValidationMiddleware" : ""} {
+export function validateBody${"ts"===r?"<T>":""}(schema${"ts"===r?": ObjectSchema<T>":""})${"ts"===r?": ValidationMiddleware":""} {
   return validate(schema, 'body');
 }
 
-export function validateParams${extension === "ts" ? "<T>" : ""}(schema${
-      extension === "ts" ? ": ObjectSchema<T>" : ""
-    })${extension === "ts" ? ": ValidationMiddleware" : ""} {
+export function validateParams${"ts"===r?"<T>":""}(schema${"ts"===r?": ObjectSchema<T>":""})${"ts"===r?": ValidationMiddleware":""} {
   return validate(schema, 'params');
 }
 
-function validate(schema${extension === "ts" ? ": ObjectSchema" : ""}, type${
-      extension === "ts" ? ":'body' | 'params'" : ""
-    }) {
-  return (req${extension === "ts" ? ": Request" : ""}, res${
-      extension === "ts" ? ": Response" : ""
-    }, next${extension === "ts" ? ": NextFunction" : ""}) => {
+function validate(schema${"ts"===r?": ObjectSchema":""}, type${"ts"===r?":'body' | 'params'":""}) {
+  return (req${"ts"===r?": Request":""}, res${"ts"===r?": Response":""}, next${"ts"===r?": NextFunction":""}) => {
     const { error } = schema.validate(req[type], {
       abortEarly: false,
     });
@@ -508,21 +161,12 @@ function validate(schema${extension === "ts" ? ": ObjectSchema" : ""}, type${
   };
 }
 
-${
-  extension === "ts"
-    ? `type ValidationMiddleware = (req: Request, res: Response, next: NextFunction) => void;`
-    : ""
-}
-    `,
-    error: `${
-      extension === "ts"
-        ? `import { ApplicationError } from "../protocols";`
-        : ""
-    }
+${"ts"===r?"type ValidationMiddleware = (req: Request, res: Response, next: NextFunction) => void;":""}
+    `,error:`${"ts"===r?'import { ApplicationError } from "../protocols";':""}
 
 export function invalidDataError(
-  details${extension === "ts" ? ": string[]" : ""}
-)${extension === "ts" ? ": ApplicationInvalidateDataError" : ""} {
+  details${"ts"===r?": string[]":""}
+)${"ts"===r?": ApplicationInvalidateDataError":""} {
   return {
     name: "InvalidDataError",
     message: "Invalid data",
@@ -530,31 +174,19 @@ export function invalidDataError(
   };
 }
 
-${
-  extension === "ts"
-    ? `type ApplicationInvalidateDataError = ApplicationError & {
+${"ts"===r?`type ApplicationInvalidateDataError = ApplicationError & {
   details: string[];
-};`
-    : ""
-}
-    `,
-    schema: `import Joi from "joi";
+};`:""}
+    `,schema:`import Joi from "joi";
 
-export const signInSchema = Joi.object${
-      extension === "ts" ? "<GenericParam>" : ""
-    }({
+export const signInSchema = Joi.object${"ts"===r?"<GenericParam>":""}({
   id: Joi.number().required(),
 });
 
-${
-  extension === "ts"
-    ? `export type GenericParam = {
+${"ts"===r?`export type GenericParam = {
   id: number;
-};`
-    : ""
-}
-    `,
-    config: `import dotenv from 'dotenv';
+};`:""}
+    `,config:`import dotenv from 'dotenv';
 import dotenvExpand from 'dotenv-expand';
 
 export function loadEnv() {
@@ -568,38 +200,45 @@ export function loadEnv() {
   const currentEnvs = dotenv.config({ path });
   dotenvExpand.expand(currentEnvs);
 }
-    `,
-  };
+    `};return s[e]}function replacePlurality(e){switch(e){case"controllers":return"controller";case"services":return"service";case"repositories":return"repository";case"routers":return"router";case"middlewares":return"middleware";case"errors":return"error";case"schemas":return"schema";case"configs":return"config";default:return""}}function loading(e){let t=setInterval(()=>{e.increment()},500);return t}(async()=>{let e=process.argv,t=e.includes("typescript")||e.includes("ts")?"ts":"js",r=e[e.length-1]||"default",s={controllers:`${r}.controller.${t}`,services:`${r}.service.${t}`,repositories:`${r}.repository.${t}`,routers:`${r}.router.${t}`,middlewares:`validation.middleware.${t}`,errors:`invalidData.error.${t}`,schemas:`params.schema.${t}`,configs:"index.ts"},{execa:o}=await import("execa"),a=await import("fs"),n=await import("path"),i=await import("inquirer"),c=i.createPromptModule(),d="project";if(!e.includes("-i")){let{project:p}=await c({type:"input",name:"project",message:"Nome do projeto:"});d=p}let l=await import("cli-progress"),u=new l.SingleBar({},l.Presets.shades_classic);u.start(100,0);let m=loading(u);try{let y=n.resolve(d,"src");for(let[f,v]of(a.existsSync(y)||a.mkdirSync(y,{recursive:!0}),a.writeFileSync(n.resolve(d,"src",`app.${t}`),`import express, { Express } from "express";
+import cors from "cors";
 
-  return template[foulder];
+import { loadEnv } from "./configs";
+import IndexRouter from "./routers/index.router";
+
+loadEnv();
+
+const app = express();
+app
+  .use(cors())
+  .use(express.json())
+  .use(IndexRouter)
+  .get("/health", (_req, res) => res.send("OK!"));
+
+export function init(): Promise<Express> {
+  return Promise.resolve(app);
 }
 
-function replacePlurality(word) {
-  switch (word) {
-    case "controllers":
-      return "controller";
-    case "services":
-      return "service";
-    case "repositories":
-      return "repository";
-    case "routers":
-      return "router";
-    case "middlewares":
-      return "middleware";
-    case "errors":
-      return "error";
-    case "schemas":
-      return "schema";
-    case "configs":
-      return "config";
-    default:
-      return "";
-  }
-}
+export default app;      
+      `),a.writeFileSync(n.resolve(d,"src",`server.${t}`),`import app, { init } from './app';
 
-function loading(bars) {
-  const interval = setInterval(() => {
-    bars.increment();
-  }, 500);
-  return interval;
-}
+const port = +process.env.PORT || 4000;
+
+init().then(() => {
+  app.listen(port, () => {
+    /* eslint-disable-next-line no-console */
+    console.log(\`Server is listening on port \${port}.\`);
+  });
+});
+      `),a.existsSync("/node_modules")||(await o("npm",["init","-y"],{cwd:d}),await o("npm",["i","express","http-status","joi","dotenv","cors","dotenv-expand",],{cwd:d}),await o("npm",["i","-D","nodemon"],{cwd:d}),"ts"===t&&(await o("npm",["i","-D","typescript","typescript-transform-paths","ts-node","tsconfig-paths","ttypescript","typescript-transform-paths",],{cwd:d}),await o("npm",["i","-D","@types/express","@types/node","@types/cors","@types/dotenv","cross-env",],{cwd:d}),await o("npx",["gitignore","node"],{cwd:d}),u.update(50),a.writeFileSync(n.resolve(d,"tsconfig.json"),JSON.stringify({compilerOptions:{target:"es2020",module:"commonjs",outDir:"dist",noImplicitAny:!0,emitDecoratorMetadata:!0,experimentalDecorators:!0,esModuleInterop:!0,rootDirs:["src","tests"],baseUrl:"src",paths:{"@/*":["*"]},plugins:[{transform:"typescript-transform-paths"},]},include:["src","tests"]},null,2)),a.writeFileSync(n.resolve(d,"nodemon.json"),JSON.stringify({execMap:{ts:"node --require ts-node/register"}},null,2)),a.readFile(n.resolve(d,"package.json"),"utf8",(e,t)=>{if(e){console.error(e);return}let r=JSON.parse(t);r.scripts.dev="cross-env NODE_ENV=development nodemon ./src/server.ts'",r.scripts.start="node dist/server.js",r.scripts.build="tsc -p tsconfig.build.json",r.scripts.lint="eslint .",r.scripts.prebuild="rm -rf dist",delete r.scripts.test,a.writeFileSync(n.resolve(d,"package.json"),JSON.stringify(r,null,2))}),a.writeFileSync(n.resolve(d,"src","protocols.ts"),`export type ApplicationError = {
+  name: string;
+  message: string;
+};
+          `))),Object.entries(s))){let x=`${y}/${f}`;if(a.existsSync(x)||a.mkdirSync(`${y}/${f}`),a.writeFileSync(`${y}/${f}/${v}`,constructorTemplate(replacePlurality(f),r,t)),"routers"===f){let g=`${y}/${f}/index.router.${t}`;a.existsSync(g)||a.writeFileSync(g,`import { Router } from "express";
+// You can add more routes but don't change this comment (import)
+
+const IndexRouter = Router();
+
+// You can add more routes but don't change this comment (index)
+
+export default IndexRouter`),a.readFile(g,"utf8",(e,t)=>{if(e){console.error(e);return}let s=`IndexRouter.use(${r}Router)`,o=/\/\/\s*You can add more routes but don't change this comment \(index\)/gm;if(o.test(t)&&!t.includes(s)){let n=t.replace(o,s+"\n// You can add more routes but don't change this comment (index)"),i=/\/\/\s*You can add more routes but don't change this comment \(import\)/gm,c=`import { ${r}Router } from "./${r}.router";`;if(i.test(t)&&!t.includes(c)){let d=n.replace(i,c+"\n// You can add more routes but don't change this comment (import)");a.writeFile(g,d,"utf-8",e=>{if(e){console.error(e);return}console.log("New route added successfully.")})}}})}}u.update(100),u.stop(),clearInterval(m),console.log("         "),console.log("All Done!"),console.log("         "),console.log("Happy Hacking! ❤"),console.log("         "),console.log("         ")}catch(h){console.error(`ERROR: The command failed. stderr: ${h} (${h.exitCode})`),console.log(h),u.stop(),process.exit(1)}})();
