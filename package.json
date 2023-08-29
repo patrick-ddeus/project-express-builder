@@ -1,14 +1,13 @@
 {
-  "name": "project-contructor",
+  "name": "project-express-builder",
   "type": "module",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon src/index.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["express", "framework", "npm"],
+  "author": "Patrick",
+  "license": "MIT",
   "dependencies": {
     "cli-progress": "^3.12.0",
     "cors": "^2.8.5",
@@ -17,6 +16,14 @@
     "express": "^4.18.2",
     "inquirer": "^9.2.10"
   },
+  "homepage": "https://github.com/patrick-ddeus/project-express-builder#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/patrick-ddeus/project-express-builder"
+  },
+  "bugs": {
+    "url": "https://github.com/patrick-ddeus/project-express-builder/issues"
+  },  
   "devDependencies": {
     "@types/inquirer": "^9.0.3"
   },

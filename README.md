@@ -18,7 +18,7 @@ npm i
 - Para criar um novo projeto Express com a estrutura de camadas predefinida, execute o seguinte comando:
 
 ```sh
-node src/index.js ts nome-do-recurso
+node index.js ts nome-do-recurso
 ```
 Isso dará inicío ao processo de construção do diretório. Após a execução o comando irá perguntar o nome para o diretório do projeto.
 nome-do-recurso se refere ao nome que vai ser usado nos endpoints CRUD. Ex: (posts, users, publications).
@@ -29,6 +29,6 @@ Ao passar `ts` o builder irá configurar o projeto para typescript. Possíveis o
 Para adicionar endpoints CRUD a um projeto existente, navegue até o diretório do projeto e execute o seguinte comando:
 
 ```sh
-node src/index.js -i ts user
+node index.js -i ts user
 ```
 Isso criará automaticamente rotas, controladores e modelos para as operações CRUD do recurso "user". Ao passar a flag -i o comando não te perguntará o nome do projeto.
